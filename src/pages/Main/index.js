@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { Keyboard, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage';
+
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import api from '../../services/api';
 
@@ -17,6 +18,8 @@ import {
   Bio,
   ProfileButton,
   ProfileButtonText,
+  ClearButton,
+  ClearButtonText,
 } from './styles';
 
 export default class Main extends Component {
@@ -53,36 +56,47 @@ export default class Main extends Component {
   }
 
   handleAddUser = async () => {
-    const { users, newUser } = this.state;
+    try {
+      const { newUser, users } = this.state;
 
-    this.setState({ loading: true });
+      this.setState({ loading: true });
 
-    const response = await api.get(`/users/${newUser}`);
+      const response = await api.get(`/users/${newUser}`);
 
-    const data = {
-      name: response.data.name,
-      login: response.data.login,
-      bio: response.data.bio,
-      avatar: response.data.avatar_url,
-    };
+      const data = {
+        name: response.data.name,
+        login: response.data.login,
+        bio: response.data.bio,
+        avatar: response.data.avatar_url,
+      };
 
-    this.setState({
-      users: [...users, data],
-      newUser: '',
-      loading: false,
-    });
+      this.setState({
+        users: [...users, data],
+        newUser: '',
+        loading: false,
+      });
 
-    Keyboard.dismiss();
+      return Keyboard.dismiss();
+    } catch (err) {
+      this.setState({ loading: false });
+      console.tron.error('Falha ao obter dados do usuário...');
+      return err;
+    }
   };
 
-  handleNavigate = user => {
+  handleNavigate = (user) => {
     const { navigation } = this.props;
-
     navigation.navigate('User', { user });
   };
 
+  handleClearStorage = async () => {
+    await AsyncStorage.clear();
+    return this.setState({ users: [] });
+  };
+
   render() {
-    const { users, newUser, loading } = this.state;
+    const { newUser, users, loading } = this.state;
+    // console.tron.log(users);
 
     return (
       <Container>
@@ -92,34 +106,36 @@ export default class Main extends Component {
             autoCapitalize="none"
             placeholder="Adicionar usuário"
             value={newUser}
-            onChangeText={text => this.setState({ newUser: text })}
+            onChangeText={(text) => this.setState({ newUser: text })}
             returnKeyType="send"
             onSubmitEditing={this.handleAddUser}
           />
           <SubmitButton loading={loading} onPress={this.handleAddUser}>
             {loading ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color="#fff" />
             ) : (
-              <Icon name="add" size={20} color="#FFF" />
+              <Icon name="add" size={20} color="#fff" />
             )}
           </SubmitButton>
         </Form>
 
         <List
           data={users}
-          keyExtractor={user => user.login}
+          keyExtractor={(user) => user.login}
           renderItem={({ item }) => (
             <User>
               <Avatar source={{ uri: item.avatar }} />
               <Name>{item.name}</Name>
               <Bio>{item.bio}</Bio>
-
               <ProfileButton onPress={() => this.handleNavigate(item)}>
                 <ProfileButtonText>Ver perfil</ProfileButtonText>
               </ProfileButton>
             </User>
           )}
         />
+        <ClearButton onPress={this.handleClearStorage}>
+          <ClearButtonText>Limpar</ClearButtonText>
+        </ClearButton>
       </Container>
     );
   }

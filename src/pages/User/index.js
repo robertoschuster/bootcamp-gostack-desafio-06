@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
+import { TouchableOpacity } from 'react-native';
 import PropTypes from 'prop-types';
-
 import api from '../../services/api';
 
 import {
@@ -9,13 +9,14 @@ import {
   Avatar,
   Name,
   Bio,
-  Loading,
   Stars,
   Starred,
   OwnerAvatar,
   Info,
   Title,
   Author,
+  Loading,
+  LoadingSpinner,
 } from './styles';
 
 export default class User extends Component {
@@ -33,54 +34,100 @@ export default class User extends Component {
   state = {
     stars: [],
     page: 1,
-    loading: true,
-    refreshing: false,
+    morePages: false,
+    loading: false,
   };
 
-  async componentDidMount() {
-    this.load();
+  componentDidMount() {
+    this.loadStars();
   }
 
-  load = async (page = 1) => {
-    const { stars } = this.state;
-    const { navigation } = this.props;
-    const user = navigation.getParam('user');
+  loadStars = async () => {
+    // console.tron.log('loadStars');
 
-    const response = await api.get(`/users/${user.login}/starred`, {
-      params: { page },
-    });
+    try {
+      const { stars, page } = this.state;
+      // if (loading) return;
+      this.setState({ loading: true });
 
-    this.setState({
-      stars: page >= 2 ? [...stars, ...response.data] : response.data,
-      page,
+      const { navigation } = this.props;
+      const user = navigation.getParam('user');
+
+      const response = await api.get(
+        `/users/${user.login}/starred?page=${page}`,
+      );
+
+      // Verifica se tem mais páginas
+      let morePages = false;
+      if (
+        response.headers.link &&
+        response.headers.link.includes('rel="next"')
+      ) {
+        morePages = true;
+      }
+
+      return this.setState({
+        stars: stars.concat(response.data),
+        page: page + 1,
+        morePages,
+        loading: false,
+      });
+    } catch (error) {
+      return error;
+    }
+  };
+
+  handleLoadMore = () => {
+    // console.tron.log('handleLoadMore');
+    const { loading, morePages } = this.state;
+    if (!loading && morePages) {
+      this.loadStars();
+    }
+  };
+
+  renderFooter = () => {
+    const { loading } = this.state;
+    if (!loading) return null;
+    return (
+      <Loading>
+        <LoadingSpinner />
+      </Loading>
+    );
+  };
+
+  refreshList = async () => {
+    // console.tron.log('refreshList');
+
+    await this.setState({
+      stars: [],
+      page: 1,
+      morePages: false,
       loading: false,
-      refreshing: false,
     });
+
+    this.loadStars();
   };
 
-  loadMore = () => {
-    const { page } = this.state;
-
-    const nextPage = page + 1;
-
-    this.load(nextPage);
-  };
-
-  refreshList = () => {
-    this.setState({ refreshing: true, stars: [] }, this.load);
-  };
-
-  handleNavigate = repository => {
+  handleNavigate = (repository) => {
     const { navigation } = this.props;
-
     navigation.navigate('Repository', { repository });
   };
 
   render() {
+    // console.tron.log(this.state);
+    const { stars, loading } = this.state;
     const { navigation } = this.props;
-    const { stars, loading, refreshing } = this.state;
-
     const user = navigation.getParam('user');
+
+    // Exibe o loading principal somente ao entrar na página
+    if (loading && stars.length === 0) {
+      return (
+        <Loading>
+          {/* <Modal transparent animationType="none" visible={loading} /> */}
+          <LoadingSpinner />
+        </Loading>
+      );
+    }
 
     return (
       <Container>
@@ -90,27 +137,28 @@ export default class User extends Component {
           <Bio>{user.bio}</Bio>
         </Header>
 
-        {loading ? (
-          <Loading />
-        ) : (
-          <Stars
-            data={stars}
-            onRefresh={this.refreshList}
-            refreshing={refreshing}
-            onEndReachedThreshold={0.2}
-            onEndReached={this.loadMore}
-            keyExtractor={star => String(star.id)}
-            renderItem={({ item }) => (
-              <Starred onPress={() => this.handleNavigate(item)}>
-                <OwnerAvatar source={{ uri: item.owner.avatar_url }} />
-                <Info>
-                  <Title>{item.name}</Title>
-                  <Author>{item.owner.login}</Author>
-                </Info>
-              </Starred>
-            )}
-          />
-        )}
+        <Stars
+          onEndReachedThreshold={0.2} // Carrega mais itens quando chegar em 20% do fim
+          onEndReached={this.handleLoadMore} // Função que carrega mais itens
+          // ListFooterComponent={this.renderFooter}
+          onRefresh={this.refreshList} // Função dispara quando o usuário arrasta a lista pra baixo
+          refreshing={loading} // Variável que armazena um estado true/false que representa se a lista está atualizando
+          data={stars}
+          keyExtractor={(star) => String(star.id)}
+          renderItem={({ item }) => {
+            return (
+              <TouchableOpacity onPress={() => this.handleNavigate(item)}>
+                <Starred onTouch>
+                  <OwnerAvatar source={{ uri: item.owner.avatar_url }} />
+                  <Info>
+                    <Title>{item.name}</Title>
+                    <Author>{item.owner.login}</Author>
+                  </Info>
+                </Starred>
+              </TouchableOpacity>
+            );
+          }}
+        />
       </Container>
     );
   }
