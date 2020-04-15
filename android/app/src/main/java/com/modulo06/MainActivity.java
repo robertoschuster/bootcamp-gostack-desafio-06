@@ -1,4 +1,4 @@
-package com.modulo06;
+package com.rocketseat.desafio06;
 
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
@@ -7,22 +7,22 @@ import com.swmansion.gesturehandler.react.RNGestureHandlerEnabledRootView;
 
 public class MainActivity extends ReactActivity {
 
-    /**
-     * Returns the name of the main component registered from JavaScript.
-     * This is used to schedule rendering of the component.
-     */
-    @Override
-    protected String getMainComponentName() {
-        return "modulo06";
-    }
+  /**
+   * Returns the name of the main component registered from JavaScript. This is used to schedule
+   * rendering of the component.
+   */
+  @Override
+  protected String getMainComponentName() {
+    return "desafio06";
+  }
 
-    @Override
-    protected ReactActivityDelegate createReactActivityDelegate() {
-      return new ReactActivityDelegate(this, getMainComponentName()) {
-        @Override
-        protected ReactRootView createRootView() {
-         return new RNGestureHandlerEnabledRootView(MainActivity.this);
-        }
-      };
-    }
+  @Override
+  protected ReactActivityDelegate createReactActivityDelegate() {
+    return new ReactActivityDelegate(this, getMainComponentName()) {
+      @Override
+      protected ReactRootView createRootView() {
+        return new RNGestureHandlerEnabledRootView(MainActivity.this);
+      }
+    };
+  }
 }
